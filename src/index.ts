@@ -65,8 +65,21 @@ app.use('/api/upload', uploadRoutes);
 app.use('/api/drawings', drawingRoutes);
 
 // Basic Route
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', message: 'Unnati ERP API is running' });
+app.get('/api/health', async (req, res) => {
+  try {
+    // Check database connectivity
+    await prisma.user.count();
+    res.json({ 
+      status: 'ok', 
+      message: 'Unnati ERP API is running and database is connected successfully.' 
+    });
+  } catch (error: any) {
+    res.status(500).json({ 
+      status: 'error', 
+      message: 'Unnati ERP API is running, but database connection failed.',
+      error: error.message || error
+    });
+  }
 });
 
 // Serve static files from the frontend dist folder
