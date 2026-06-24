@@ -23,7 +23,13 @@ router.get('/:id', authenticate, async (req, res) => {
     const { id } = req.params;
     const project = await prisma.project.findUnique({
       where: { id: String(id) },
-      include: { assignedTo: { select: { name: true } }, invoices: true }
+      include: { 
+        assignedTo: { select: { name: true } }, 
+        invoices: true,
+        quotations: {
+          orderBy: { createdAt: 'desc' }
+        }
+      }
     });
     if (!project) return res.status(404).json({ message: 'Project not found' });
     res.json(project);
