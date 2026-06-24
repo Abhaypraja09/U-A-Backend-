@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import path from 'path';
 import { PrismaClient } from '@prisma/client';
 
 dotenv.config();
@@ -22,6 +23,8 @@ import quotationRoutes from './routes/quotationRoutes';
 import invoiceRoutes from './routes/invoiceRoutes';
 import inventoryRoutes from './routes/inventoryRoutes';
 import productionRoutes from './routes/productionRoutes';
+import categoryRoutes from './routes/categoryRoutes';
+import unitRoutes from './routes/unitRoutes';
 import machineRoutes from './routes/machineRoutes';
 import dispatchRoutes from './routes/dispatchRoutes';
 import hrRoutes from './routes/hrRoutes';
@@ -44,8 +47,10 @@ app.use('/api/designs', designRoutes);
 app.use('/api/quotations', quotationRoutes);
 app.use('/api/invoices', invoiceRoutes);
 app.use('/api/inventory', inventoryRoutes);
-app.use('/api/production', productionRoutes);
 app.use('/api/machines', machineRoutes);
+app.use('/api/production', productionRoutes);
+app.use('/api/categories', categoryRoutes);
+app.use('/api/units', unitRoutes);
 app.use('/api/dispatch', dispatchRoutes);
 app.use('/api/hr', hrRoutes);
 app.use('/api/dashboard', dashboardRoutes);
@@ -62,6 +67,14 @@ app.use('/api/drawings', drawingRoutes);
 // Basic Route
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Unnati ERP API is running' });
+});
+
+// Serve static files from the frontend public folder
+app.use(express.static(path.join(__dirname, '../public')));
+
+// Catch-all route to serve the frontend app
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/index.html'));
 });
 
 // Start Server

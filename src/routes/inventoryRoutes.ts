@@ -19,13 +19,15 @@ router.get('/', authenticate, async (req, res) => {
 // Add new inventory item
 router.post('/', authenticate, async (req, res) => {
   try {
-    const { type, jobWorkType, itemName, length, width, height, weight, quantity, unit, supplier, costPerUnit } = req.body;
+    const { type, jobWorkType, itemName, blockNumber, thickness, length, width, height, weight, quantity, unit, supplier, costPerUnit } = req.body;
     
     const newItem = await prisma.inventory.create({
       data: {
         type,
         jobWorkType: jobWorkType || 'company',
         itemName,
+        blockNumber,
+        thickness: thickness ? Number(thickness) : null,
         length: length ? Number(length) : null,
         width: width ? Number(width) : null,
         height: height ? Number(height) : null,

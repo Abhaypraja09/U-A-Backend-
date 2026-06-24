@@ -25,7 +25,7 @@ router.post('/', upload.array('files', 10), async (req, res) => {
     const uploadPromises = files.map(file => {
       return new Promise<{ url: string }>((resolve, reject) => {
         const uploadStream = cloudinary.uploader.upload_stream(
-          { folder: 'unnati-erp/designs' },
+          { folder: 'unnati-erp/designs', resource_type: 'auto' },
           (error, result) => {
             if (error) reject(error);
             else resolve({ url: result!.secure_url });

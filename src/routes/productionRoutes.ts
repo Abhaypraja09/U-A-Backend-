@@ -17,6 +17,21 @@ router.get('/', authenticate, async (req, res) => {
   }
 });
 
+// Get production logs by project
+router.get('/project/:projectId', authenticate, async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const logs = await prisma.productionLog.findMany({
+      where: { projectId: String(projectId) },
+      orderBy: { createdAt: 'asc' },
+      include: { machine: { select: { name: true } }, worker: { select: { name: true } } }
+    });
+    res.json(logs);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error fetching production logs for project' });
+  }
+});
+
 // Add production log
 router.post('/', authenticate, async (req, res) => {
   try {

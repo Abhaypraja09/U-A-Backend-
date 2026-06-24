@@ -181,6 +181,18 @@ model Invoice {
   updatedAt      DateTime @updatedAt
 }
 
+model ProductCategory {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  name      String   @unique
+  createdAt DateTime @default(now())
+}
+
+model UnitCategory {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  name      String   @unique
+  createdAt DateTime @default(now())
+}
+
 model Inventory {
   id          String   @id @default(auto()) @map("_id") @db.ObjectId
   type        String   // block, slab, consumable
@@ -188,6 +200,8 @@ model Inventory {
   itemName    String
   
   // Dimensions for blocks/slabs
+  blockNumber String?
+  thickness   Float?
   length      Float?
   width       Float?
   height      Float?

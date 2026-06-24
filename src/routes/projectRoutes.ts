@@ -23,7 +23,7 @@ router.get('/:id', authenticate, async (req, res) => {
     const { id } = req.params;
     const project = await prisma.project.findUnique({
       where: { id: String(id) },
-      include: { assignedTo: { select: { name: true } } }
+      include: { assignedTo: { select: { name: true } }, invoices: true }
     });
     if (!project) return res.status(404).json({ message: 'Project not found' });
     res.json(project);
@@ -34,7 +34,7 @@ router.get('/:id', authenticate, async (req, res) => {
 
 router.post('/', authenticate, async (req, res) => {
   try {
-    const { name, description, status, startDate, deadline, assignedToId, clientName, clientContact, clientEmail, enquirySource, location, requirements } = req.body;
+    const { name, description, status, startDate, deadline, assignedToId, clientName, clientContact, clientEmail, enquirySource, location, requirements, createdAt } = req.body;
     
     // Auto-generate project ID (e.g. U-A-01) resetting per Financial Year
     const now = new Date();
@@ -63,6 +63,7 @@ router.post('/', authenticate, async (req, res) => {
         enquirySource,
         location,
         requirements,
+        createdAt: createdAt ? new Date(createdAt) : undefined,
         status: status || 'enquiry',
         startDate: startDate ? new Date(startDate) : null,
         deadline: deadline ? new Date(deadline) : null,
@@ -93,6 +94,79 @@ router.patch('/:id', authenticate, async (req, res) => {
     res.json(updated);
   } catch (error) {
     res.status(500).json({ message: 'Server error updating project' });
+  }
+});
+
+// Delete project
+router.delete('/:id', authenticate, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // In a real app we might soft-delete or cascade delete. For now, hard delete.
+    // Need to delete related records first or add cascade in schema
+    // Since we don't have cascade in schema, we should delete related records
+    await prisma.shopDrawing.deleteMany({ where: { projectId: String(id) } });
+    await prisma.quotation.deleteMany({ where: { projectId: String(id) } });
+    await prisma.invoice.deleteMany({ where: { projectId: String(id) } });
+    await prisma.projectMaterial.deleteMany({ where: { projectId: String(id) } });
+    await prisma.productionLog.deleteMany({ where: { projectId: String(id) } });
+    
+    await prisma.project.delete({
+      where: { id: String(id) }
+    });
+    
+    res.json({ message: 'Project deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error deleting project' });
+  }
+});
+
+// Get materials reserved for project
+router.get('/:id/materials', authenticate, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const materials = await prisma.projectMaterial.findMany({
+      where: { projectId: String(id) },
+      include: { inventory: true },
+      orderBy: { addedAt: 'desc' }
+    });
+    res.json(materials);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error fetching project materials' });
+  }
+});
+
+// Reserve material for project
+router.post('/:id/materials', authenticate, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { inventoryId, quantity, cost } = req.body;
+    
+    // Check inventory stock
+    const inventory = await prisma.inventory.findUnique({ where: { id: inventoryId } });
+    if (!inventory || inventory.quantity < quantity) {
+      return res.status(400).json({ message: 'Not enough stock in inventory' });
+    }
+
+    // Deduct stock from inventory and add to project material inside a transaction
+    const [projectMaterial, updatedInventory] = await prisma.$transaction([
+      prisma.projectMaterial.create({
+        data: {
+          projectId: String(id),
+          inventoryId,
+          quantity: Number(quantity),
+          cost: Number(cost)
+        }
+      }),
+      prisma.inventory.update({
+        where: { id: inventoryId },
+        data: { quantity: inventory.quantity - Number(quantity) }
+      })
+    ]);
+    
+    res.status(201).json(projectMaterial);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error reserving material' });
   }
 });
 
