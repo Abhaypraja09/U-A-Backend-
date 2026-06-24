@@ -75,7 +75,8 @@ app.use((req, res) => {
     res.sendFile(path_1.default.join(__dirname, '../dist/index.html'));
 });
 // Start Server
-app.listen(port, () => {
-    console.log(`Server is running on port ${port}`);
+const host = process.env.HOST || '0.0.0.0';
+app.listen(port, host, () => {
+    console.log(`Server is running on ${host}:${port}`);
 });
 //# sourceMappingURL=index.js.map
