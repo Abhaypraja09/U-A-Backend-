@@ -41,7 +41,7 @@ router.get('/:id', authMiddleware_1.authenticate, async (req, res) => {
 });
 router.post('/', authMiddleware_1.authenticate, async (req, res) => {
     try {
-        const { name, description, status, startDate, deadline, assignedToId, clientName, clientContact, clientEmail, enquirySource, location, requirements, createdAt } = req.body;
+        const { name, description, status, startDate, deadline, assignedToId, clientName, clientContact, clientEmail, enquirySource, location, requirements, createdAt, customerPhoto } = req.body;
         // Auto-generate project ID (e.g. U-A-01) resetting per Financial Year
         const now = new Date();
         const currentYear = now.getFullYear();
@@ -71,7 +71,8 @@ router.post('/', authMiddleware_1.authenticate, async (req, res) => {
                 status: status || 'enquiry',
                 startDate: startDate ? new Date(startDate) : null,
                 deadline: deadline ? new Date(deadline) : null,
-                assignedToId
+                assignedToId,
+                customerPhoto
             }
         });
         res.status(201).json(newProject);

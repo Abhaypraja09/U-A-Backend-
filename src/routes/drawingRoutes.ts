@@ -80,4 +80,38 @@ router.post('/:id/approve', async (req, res) => {
   }
 });
 
+// Edit drawing
+router.patch('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { title, comments } = req.body;
+    const updated = await prisma.shopDrawing.update({
+      where: { id },
+      data: { title, comments }
+    });
+    res.json(updated);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to update drawing' });
+  }
+});
+
+// Delete drawing
+router.delete('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // First delete any approval records associated with it
+    await prisma.approvalRecord.deleteMany({
+      where: { shopDrawingId: id }
+    });
+
+    await prisma.shopDrawing.delete({
+      where: { id }
+    });
+    res.json({ message: 'Drawing deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to delete drawing' });
+  }
+});
+
 export default router;

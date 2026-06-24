@@ -176,6 +176,8 @@ model Invoice {
   advancePaid    Float    @default(0)
   balanceAmount  Float    @default(0)
   status         String   @default("unpaid")
+  paymentMethod  String?
+  paymentDate    DateTime?
   issueDate      DateTime @default(now())
   dueDate        DateTime?
   createdAt      DateTime @default(now())

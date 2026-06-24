@@ -20,7 +20,7 @@ router.get('/', authMiddleware_1.authenticate, async (req, res) => {
 // Create Invoice
 router.post('/', authMiddleware_1.authenticate, async (req, res) => {
     try {
-        const { projectId, totalAmount, advancePaid, dueDate } = req.body;
+        const { projectId, totalAmount, advancePaid, dueDate, paymentMethod, paymentDate } = req.body;
         const count = await index_1.prisma.invoice.count();
         const invoiceNumber = `INV-${new Date().getFullYear()}-${String(count + 1).padStart(4, '0')}`;
         const balanceAmount = Number(totalAmount) - Number(advancePaid || 0);
@@ -37,6 +37,8 @@ router.post('/', authMiddleware_1.authenticate, async (req, res) => {
                 advancePaid: Number(advancePaid || 0),
                 balanceAmount,
                 dueDate: dueDate ? new Date(dueDate) : null,
+                paymentMethod,
+                paymentDate: paymentDate ? new Date(paymentDate) : null,
                 status
             }
         });
