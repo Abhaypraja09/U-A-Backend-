@@ -78,7 +78,6 @@ app.use((req, res) => {
 });
 
 // Start Server
-const host = process.env.HOST || '0.0.0.0';
-app.listen(port as number, host, () => {
-  console.log(`Server is running on ${host}:${port}`);
+app.listen(port, () => {
+  console.log(`Server is running on port ${port}`);
 });
