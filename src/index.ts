@@ -69,12 +69,12 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Unnati ERP API is running' });
 });
 
-// Serve static files from the frontend public folder
-app.use(express.static(path.join(__dirname, '../public')));
+// Serve static files from the frontend dist folder
+app.use(express.static(path.join(__dirname, '../dist')));
 
-// Catch-all route to serve the frontend app
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../public/index.html'));
+// Catch-all route to serve the frontend app (Express 5 safe)
+app.use((req, res) => {
+  res.sendFile(path.join(__dirname, '../dist/index.html'));
 });
 
 // Start Server
