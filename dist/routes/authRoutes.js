@@ -11,15 +11,23 @@ const router = (0, express_1.Router)();
 // Register a new user
 router.post('/register', async (req, res) => {
     try {
-        const { name, email, password, role, department, wage, otRate } = req.body;
-        // Check if user exists
-        const existingUser = await index_1.prisma.user.findUnique({ where: { email } });
+        const { name, email, password, role, department, wage, otRate, staffId } = req.body;
+        // Check if user exists by email or staffId
+        const existingUser = await index_1.prisma.user.findFirst({
+            where: {
+                OR: [
+                    { email },
+                    ...(staffId ? [{ staffId }] : [])
+                ]
+            }
+        });
         if (existingUser) {
-            return res.status(400).json({ message: 'User already exists' });
+            return res.status(400).json({ message: 'User already exists with this email or Staff ID' });
         }
         const hashedPassword = await bcryptjs_1.default.hash(password, 10);
         const user = await index_1.prisma.user.create({
             data: {
+                staffId,
                 name,
                 email,
                 password: hashedPassword,
@@ -38,8 +46,16 @@ router.post('/register', async (req, res) => {
 // Login
 router.post('/login', async (req, res) => {
     try {
-        const { email, password } = req.body;
-        const user = await index_1.prisma.user.findUnique({ where: { email } });
+        // emailOrStaffId can be an email or a staffId
+        const { email: emailOrStaffId, password } = req.body;
+        const user = await index_1.prisma.user.findFirst({
+            where: {
+                OR: [
+                    { email: emailOrStaffId },
+                    { staffId: emailOrStaffId }
+                ]
+            }
+        });
         if (!user) {
             return res.status(400).json({ message: 'Invalid credentials' });
         }

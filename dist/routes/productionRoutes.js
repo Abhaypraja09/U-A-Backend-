@@ -17,6 +17,58 @@ router.get('/', authMiddleware_1.authenticate, async (req, res) => {
         res.status(500).json({ message: 'Server error fetching production logs' });
     }
 });
+// Get Active Work Orders (Comprehensive List)
+router.get('/work-orders', authMiddleware_1.authenticate, async (req, res) => {
+    try {
+        const projects = await index_1.prisma.project.findMany({
+            where: { status: 'work_order' },
+            include: {
+                machineLogs: {
+                    include: { machine: true }
+                },
+                productionLogs: true
+            }
+        });
+        const formattedWorkOrders = projects.map(p => {
+            let totalUsageTimeHours = 0;
+            let earliestStart = null;
+            let latestEnd = null;
+            let machinesUsed = new Set();
+            p.machineLogs.forEach(log => {
+                if (log.machine)
+                    machinesUsed.add(log.machine.name);
+                const start = new Date(log.startTime);
+                const end = log.endTime ? new Date(log.endTime) : new Date();
+                if (!earliestStart || start < earliestStart)
+                    earliestStart = start;
+                if (!latestEnd || end > latestEnd)
+                    latestEnd = end;
+                const diffMs = end.getTime() - start.getTime();
+                totalUsageTimeHours += (diffMs / (1000 * 60 * 60));
+            });
+            const completedLogs = p.productionLogs.filter(pl => pl.status === 'completed');
+            const totalLogs = p.productionLogs.length;
+            const statusText = totalLogs > 0 ? `${completedLogs.length}/${totalLogs} Stages Completed` : 'In Progress';
+            return {
+                id: p.id,
+                projectId: p.projectId,
+                clientDemand: p.requirements || p.description || 'N/A',
+                machinesUsed: Array.from(machinesUsed).join(', ') || 'N/A',
+                startTime: earliestStart,
+                endTime: latestEnd,
+                dateRange: earliestStart && latestEnd ? `${earliestStart.toLocaleDateString()} - ${latestEnd.toLocaleDateString()}` : 'N/A',
+                totalUsageTime: totalUsageTimeHours.toFixed(2) + ' hours',
+                status: statusText,
+                progressPercentage: p.progressPercentage
+            };
+        });
+        res.json(formattedWorkOrders);
+    }
+    catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server error fetching active work orders' });
+    }
+});
 // Get production logs by project
 router.get('/project/:projectId', authMiddleware_1.authenticate, async (req, res) => {
     try {

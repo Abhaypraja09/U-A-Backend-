@@ -10,6 +10,7 @@ datasource db {
 
 model User {
   id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  staffId    String?  @unique
   name       String
   email      String   @unique
   password   String
@@ -331,19 +332,23 @@ model QA_QC {
 }
 
 model MachineLog {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
-  machineId   String   @db.ObjectId
-  machine     Machine  @relation(fields: [machineId], references: [id])
-  projectId   String?  @db.ObjectId
-  project     Project? @relation(fields: [projectId], references: [id])
-  startTime   DateTime
-  endTime     DateTime?
-  downtime    Float    @default(0) // hours
-  operatorId  String?  @db.ObjectId
-  operator    User?    @relation(fields: [operatorId], references: [id])
-  remarks     String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id               String   @id @default(auto()) @map("_id") @db.ObjectId
+  machineId        String   @db.ObjectId
+  machine          Machine  @relation(fields: [machineId], references: [id])
+  projectId        String?  @db.ObjectId
+  project          Project? @relation(fields: [projectId], references: [id])
+  startTime        DateTime
+  endTime          DateTime?
+  downtime         Float    @default(0) // hours
+  operatorId       String?  @db.ObjectId
+  operator         User?    @relation(fields: [operatorId], references: [id])
+  machinePhotoUrl  String?
+  unitPhotoUrl     String?
+  softwarePhotoUrl String?
+  status           String   @default("active") // active, completed
+  remarks          String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 }
 
 model LaborContract {
