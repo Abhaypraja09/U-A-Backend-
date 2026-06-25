@@ -9,9 +9,41 @@ router.get('/', authMiddleware_1.authenticate, async (req, res) => {
     try {
         const projects = await index_1.prisma.project.findMany({
             orderBy: { createdAt: 'desc' },
-            include: { assignedTo: { select: { name: true } } }
+            include: {
+                assignedTo: { select: { name: true } },
+                quotations: { select: { products: true }, orderBy: { createdAt: 'desc' }, take: 1 },
+                productionLogs: { select: { quantityProduced: true, status: true } }
+            }
         });
-        res.json(projects);
+        const enrichedProjects = projects.map(p => {
+            let calculatedTotalPieces = 0;
+            if (p.quotations && p.quotations.length > 0) {
+                const firstQuote = p.quotations[0];
+                if (firstQuote && firstQuote.products) {
+                    const products = firstQuote.products;
+                    if (Array.isArray(products)) {
+                        calculatedTotalPieces = products.reduce((acc, curr) => acc + (Number(curr.qty) || 0), 0);
+                    }
+                }
+            }
+            let calculatedCompletedPieces = 0;
+            if (p.productionLogs && p.productionLogs.length > 0) {
+                calculatedCompletedPieces = p.productionLogs
+                    .filter((log) => log.status === 'completed')
+                    .reduce((acc, log) => acc + (Number(log.quantityProduced) || 0), 0);
+            }
+            // We remove the included relations from the response to save payload size, 
+            // but attach the calculated fields.
+            const { quotations, productionLogs, ...projectData } = p;
+            return {
+                ...projectData,
+                totalPieces: calculatedTotalPieces > 0 ? calculatedTotalPieces : projectData.totalPieces,
+                completedPieces: calculatedCompletedPieces > 0 ? calculatedCompletedPieces : projectData.completedPieces,
+                deliveryDate: projectData.deadline || projectData.deliveryDate,
+                clientHandle: projectData.clientHandle || projectData.assignedTo?.name
+            };
+        });
+        res.json(enrichedProjects);
     }
     catch (error) {
         res.status(500).json({ message: 'Server error fetching projects' });
@@ -41,7 +73,7 @@ router.get('/:id', authMiddleware_1.authenticate, async (req, res) => {
 });
 router.post('/', authMiddleware_1.authenticate, async (req, res) => {
     try {
-        const { name, description, status, startDate, deadline, assignedToId, clientName, clientContact, clientEmail, enquirySource, location, requirements, createdAt, customerPhoto } = req.body;
+        const { name, description, status, startDate, deadline, assignedToId, clientName, clientContact, clientEmail, enquirySource, location, requirements, createdAt, customerPhoto, totalPieces, completedPieces, deliveryDate, clientHandle } = req.body;
         // Auto-generate project ID (e.g. U-A-01) resetting per Financial Year
         const now = new Date();
         const currentYear = now.getFullYear();
@@ -69,10 +101,14 @@ router.post('/', authMiddleware_1.authenticate, async (req, res) => {
                 requirements,
                 createdAt: createdAt ? new Date(createdAt) : undefined,
                 status: status || 'enquiry',
-                startDate: startDate ? new Date(startDate) : null,
+                startDate: startDate ? new Date(startDate) : new Date(),
                 deadline: deadline ? new Date(deadline) : null,
                 assignedToId,
-                customerPhoto
+                customerPhoto,
+                totalPieces: totalPieces ? parseInt(totalPieces) : 0,
+                completedPieces: completedPieces ? parseInt(completedPieces) : 0,
+                deliveryDate: deliveryDate ? new Date(deliveryDate) : null,
+                clientHandle
             }
         });
         res.status(201).json(newProject);

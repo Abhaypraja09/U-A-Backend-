@@ -15,8 +15,8 @@ const port = process.env.PORT || 5000;
 exports.prisma = new client_1.PrismaClient();
 // Middleware
 app.use((0, cors_1.default)());
-app.use(express_1.default.json());
-app.use(express_1.default.urlencoded({ extended: true }));
+app.use(express_1.default.json({ limit: '50mb' }));
+app.use(express_1.default.urlencoded({ extended: true, limit: '50mb' }));
 const authRoutes_1 = __importDefault(require("./routes/authRoutes"));
 const leadRoutes_1 = __importDefault(require("./routes/leadRoutes"));
 const projectRoutes_1 = __importDefault(require("./routes/projectRoutes"));

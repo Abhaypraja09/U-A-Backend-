@@ -12,7 +12,7 @@ router.get('/attendance', authenticate, async (req, res) => {
       include: { user: { select: { name: true, department: true } } }
     });
     res.json(records);
-  } catch (error) {
+  } catch (error) { console.error(error);
     res.status(500).json({ message: 'Server error fetching attendance' });
   }
 });
@@ -24,14 +24,16 @@ router.post('/attendance/checkin', authenticate, async (req, res) => {
     const userId = (req as any).user?.id;
     if (!userId) return res.status(401).json({ message: 'Unauthorized' });
 
-    // Check if already checked in today without checking out
-    const activeSession = await prisma.attendance.findFirst({
-      where: { userId, checkOut: null },
-      orderBy: { checkIn: 'desc' }
+    // Check if there is already an active session (to prevent double punch-in without punch-out)
+    const existingActiveSession = await prisma.attendance.findFirst({
+      where: { 
+        userId,
+        checkOut: { isSet: false }
+      }
     });
 
-    if (activeSession) {
-      return res.status(400).json({ message: 'You are already punched in.' });
+    if (existingActiveSession) {
+      return res.status(400).json({ message: 'You are already punched in. Please punch out first.' });
     }
 
     const newRecord = await prisma.attendance.create({
@@ -46,7 +48,7 @@ router.post('/attendance/checkin', authenticate, async (req, res) => {
     });
     
     res.status(201).json(newRecord);
-  } catch (error) {
+  } catch (error) { console.error(error);
     res.status(500).json({ message: 'Server error creating attendance' });
   }
 });
@@ -57,22 +59,40 @@ router.post('/attendance/checkout', authenticate, async (req, res) => {
     const userId = (req as any).user?.id;
     if (!userId) return res.status(401).json({ message: 'Unauthorized' });
 
+    // Find the latest attendance record for today that hasn't been checked out
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+
     const activeSession = await prisma.attendance.findFirst({
-      where: { userId, checkOut: null },
+      where: { 
+        userId, 
+        checkIn: { gte: startOfDay },
+        checkOut: { isSet: false }
+      },
       orderBy: { checkIn: 'desc' }
     });
 
-    if (!activeSession) {
-      return res.status(400).json({ message: 'No active punch-in found.' });
+    // Fallback if isSet: false is not supported or if checkOut was explicitly set to null
+    const activeSessionFallback = activeSession || await prisma.attendance.findFirst({
+      where: { 
+        userId, 
+        checkIn: { gte: startOfDay },
+        checkOut: null
+      },
+      orderBy: { checkIn: 'desc' }
+    });
+
+    if (!activeSessionFallback) {
+      return res.status(400).json({ message: 'No active punch-in found to check out.' });
     }
 
     const updatedRecord = await prisma.attendance.update({
-      where: { id: activeSession.id },
+      where: { id: activeSessionFallback.id },
       data: { checkOut: new Date() }
     });
     
     res.json(updatedRecord);
-  } catch (error) {
+  } catch (error) { console.error(error);
     res.status(500).json({ message: 'Server error updating attendance' });
   }
 });
@@ -83,14 +103,33 @@ router.get('/attendance/active', authenticate, async (req, res) => {
     const userId = (req as any).user?.id;
     if (!userId) return res.status(401).json({ message: 'Unauthorized' });
 
-    const activeSession = await prisma.attendance.findFirst({
-      where: { userId, checkOut: null },
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+
+    let activeSession = await prisma.attendance.findFirst({
+      where: { 
+        userId, 
+        checkIn: { gte: startOfDay },
+        checkOut: { isSet: false } 
+      },
       orderBy: { checkIn: 'desc' },
       include: { machine: true }
     });
 
+    if (!activeSession) {
+      activeSession = await prisma.attendance.findFirst({
+        where: { 
+          userId, 
+          checkIn: { gte: startOfDay },
+          checkOut: null 
+        },
+        orderBy: { checkIn: 'desc' },
+        include: { machine: true }
+      });
+    }
+
     res.json(activeSession || null);
-  } catch (error) {
+  } catch (error) { console.error(error);
     res.status(500).json({ message: 'Server error fetching active attendance' });
   }
 });
@@ -139,8 +178,48 @@ router.get('/staff-salary', authenticate, async (req, res) => {
     });
 
     res.json(staffData);
-  } catch (error) {
+  } catch (error) { console.error(error);
     res.status(500).json({ message: 'Server error fetching staff salary' });
+  }
+});
+
+// Delete staff
+router.delete('/staff/:id', authenticate, async (req, res) => {
+  try {
+    const id = req.params.id as string;
+    
+    // Check if user exists
+    const user = await prisma.user.findUnique({ where: { id } });
+    if (!user) {
+      return res.status(404).json({ message: 'Staff member not found' });
+    }
+
+    // Delete related records to maintain DB integrity
+    await prisma.attendance.deleteMany({ where: { userId: id } });
+    await prisma.productionLog.deleteMany({ where: { workerId: id } });
+    await prisma.machineLog.deleteMany({ where: { operatorId: id } });
+    await prisma.payroll.deleteMany({ where: { userId: id } });
+    
+    // Delete the user
+    await prisma.user.delete({ where: { id } });
+
+    res.json({ message: 'Staff member deleted successfully' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error deleting staff' });
+  }
+});
+
+// Get all staff (for management)
+router.get('/staff', authenticate, async (req, res) => {
+  try {
+    const users = await prisma.user.findMany({
+      select: { id: true, name: true, email: true, staffId: true, role: true, department: true }
+    });
+    res.json(users);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error fetching staff' });
   }
 });
 

@@ -58,6 +58,12 @@ model Project {
   assignedToId String? @db.ObjectId
   assignedTo   User?   @relation("AssignedProjects", fields: [assignedToId], references: [id])
   
+  // Work Order specific metrics
+  totalPieces       Int @default(0)
+  completedPieces   Int @default(0)
+  deliveryDate      DateTime?
+  clientHandle      String?
+
   designFiles    String[] @default([])
   receiptUrl     String?
   workOrderUrl   String?
@@ -239,8 +245,8 @@ model Machine {
 
 model ProductionLog {
   id          String   @id @default(auto()) @map("_id") @db.ObjectId
-  projectId   String   @db.ObjectId
-  project     Project  @relation(fields: [projectId], references: [id])
+  projectId   String?  @db.ObjectId
+  project     Project? @relation(fields: [projectId], references: [id])
   stage       String   // cutting, cnc, carving, inlay, polishing, packing
   machineId   String?  @db.ObjectId
   machine     Machine? @relation(fields: [machineId], references: [id])
@@ -250,6 +256,13 @@ model ProductionLog {
   endTime     DateTime?
   status           String   @default("in_progress") // in_progress, completed, paused
   quantityProduced Float    @default(0) // Sq.Ft. or Pieces produced
+  
+  // Material Tracking and Workflow Fields
+  transactionType  String?  // OUT (Given to staff), IN (Received from staff)
+  approvalStatus   String   @default("pending") // pending, approved, rejected
+  startPhotos      Json?    // { machine, unit, software }
+  vendorName       String?  // If given to outside vendor
+  
   remarks          String?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
@@ -345,7 +358,11 @@ model MachineLog {
   machinePhotoUrl  String?
   unitPhotoUrl     String?
   softwarePhotoUrl String?
+  endMachinePhotoUrl  String?
+  endUnitPhotoUrl     String?
+  endSoftwarePhotoUrl String?
   status           String   @default("active") // active, completed
+  approvalStatus   String   @default("pending") // pending, approved, rejected
   remarks          String?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt

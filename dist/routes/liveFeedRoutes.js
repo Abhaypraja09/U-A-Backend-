@@ -4,11 +4,13 @@ const express_1 = require("express");
 const index_1 = require("../index");
 const authMiddleware_1 = require("../middlewares/authMiddleware");
 const router = (0, express_1.Router)();
-// Get live factory feed (Active Machine Logs)
+// Get live factory feed (Machine Logs for Today)
 router.get('/', authMiddleware_1.authenticate, async (req, res) => {
     try {
-        const activeMachineLogs = await index_1.prisma.machineLog.findMany({
-            where: { status: 'active' },
+        const startOfDay = new Date();
+        startOfDay.setHours(0, 0, 0, 0);
+        const liveFeedLogs = await index_1.prisma.machineLog.findMany({
+            where: { startTime: { gte: startOfDay } },
             include: {
                 machine: true,
                 operator: { select: { name: true, staffId: true, role: true, department: true } },
@@ -16,7 +18,7 @@ router.get('/', authMiddleware_1.authenticate, async (req, res) => {
             },
             orderBy: { startTime: 'desc' }
         });
-        res.json(activeMachineLogs);
+        res.json(liveFeedLogs);
     }
     catch (error) {
         console.error('Live Feed Error:', error);
