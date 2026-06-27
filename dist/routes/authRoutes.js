@@ -12,11 +12,12 @@ const router = (0, express_1.Router)();
 router.post('/register', async (req, res) => {
     try {
         const { name, email, password, role, department, wage, otRate, staffId } = req.body;
+        const finalEmail = email || (staffId ? `${staffId}@unnati.com` : `${name.replace(/\s+/g, '').toLowerCase()}${Math.floor(Math.random() * 1000)}@unnati.com`);
         // Check if user exists by email or staffId
         const existingUser = await index_1.prisma.user.findFirst({
             where: {
                 OR: [
-                    { email },
+                    { email: finalEmail },
                     ...(staffId ? [{ staffId }] : [])
                 ]
             }
@@ -29,7 +30,7 @@ router.post('/register', async (req, res) => {
             data: {
                 staffId,
                 name,
-                email,
+                email: finalEmail,
                 password: hashedPassword,
                 role: role || 'employee',
                 department,
@@ -51,8 +52,9 @@ router.post('/login', async (req, res) => {
         const user = await index_1.prisma.user.findFirst({
             where: {
                 OR: [
-                    { email: emailOrStaffId },
-                    { staffId: emailOrStaffId }
+                    { email: { equals: emailOrStaffId, mode: 'insensitive' } },
+                    { staffId: { equals: emailOrStaffId, mode: 'insensitive' } },
+                    { name: { equals: emailOrStaffId, mode: 'insensitive' } }
                 ]
             }
         });

@@ -169,6 +169,7 @@ model Quotation {
   totalCost        Float    @default(0)
   finalAmount      Float    @default(0)
   products         Json?
+  additionalCosts  Json?
   status           String   @default("draft") // draft, sent, approved, rejected
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
@@ -247,6 +248,8 @@ model ProductionLog {
   id          String   @id @default(auto()) @map("_id") @db.ObjectId
   projectId   String?  @db.ObjectId
   project     Project? @relation(fields: [projectId], references: [id])
+  productId   String?
+  productName String?
   stage       String   // cutting, cnc, carving, inlay, polishing, packing
   machineId   String?  @db.ObjectId
   machine     Machine? @relation(fields: [machineId], references: [id])
@@ -262,6 +265,10 @@ model ProductionLog {
   approvalStatus   String   @default("pending") // pending, approved, rejected
   startPhotos      Json?    // { machine, unit, software }
   vendorName       String?  // If given to outside vendor
+  isReturned       Boolean? @default(false)
+  returnedQty      Float?   @default(0)
+  returnDate       DateTime?
+  parentLogId      String?  @db.ObjectId
   
   remarks          String?
   createdAt        DateTime @default(now())
@@ -350,9 +357,12 @@ model MachineLog {
   machine          Machine  @relation(fields: [machineId], references: [id])
   projectId        String?  @db.ObjectId
   project          Project? @relation(fields: [projectId], references: [id])
+  productId        String?
+  productName      String?
   startTime        DateTime
   endTime          DateTime?
   downtime         Float    @default(0) // hours
+  quantityProduced Float?   @default(0)
   operatorId       String?  @db.ObjectId
   operator         User?    @relation(fields: [operatorId], references: [id])
   machinePhotoUrl  String?

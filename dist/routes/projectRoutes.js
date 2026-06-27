@@ -37,6 +37,7 @@ router.get('/', authMiddleware_1.authenticate, async (req, res) => {
             const { quotations, productionLogs, ...projectData } = p;
             return {
                 ...projectData,
+                products: p.quotations?.[0]?.products || [],
                 totalPieces: calculatedTotalPieces > 0 ? calculatedTotalPieces : projectData.totalPieces,
                 completedPieces: calculatedCompletedPieces > 0 ? calculatedCompletedPieces : projectData.completedPieces,
                 deliveryDate: projectData.deadline || projectData.deliveryDate,

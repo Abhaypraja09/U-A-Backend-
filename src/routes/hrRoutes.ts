@@ -24,16 +24,31 @@ router.post('/attendance/checkin', authenticate, async (req, res) => {
     const userId = (req as any).user?.id;
     if (!userId) return res.status(401).json({ message: 'Unauthorized' });
 
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+
     // Check if there is already an active session (to prevent double punch-in without punch-out)
     const existingActiveSession = await prisma.attendance.findFirst({
       where: { 
         userId,
-        checkOut: { isSet: false }
+        OR: [
+          { checkOut: { isSet: false } },
+          { checkOut: null }
+        ]
       }
     });
 
     if (existingActiveSession) {
-      return res.status(400).json({ message: 'You are already punched in. Please punch out first.' });
+      if (new Date(existingActiveSession.checkIn) >= startOfDay) {
+        return res.status(400).json({ message: 'You are already punched in. Please punch out first.' });
+      } else {
+        // Auto-close prior day attendance session at checkIn + 8 hours
+        const autoCheckoutTime = new Date(new Date(existingActiveSession.checkIn).getTime() + 8 * 60 * 60 * 1000);
+        await prisma.attendance.update({
+          where: { id: existingActiveSession.id },
+          data: { checkOut: autoCheckoutTime }
+        });
+      }
     }
 
     const newRecord = await prisma.attendance.create({
